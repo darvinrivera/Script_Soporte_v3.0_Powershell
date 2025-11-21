@@ -1,0 +1,132 @@
+📋 Documentación - Script para Soporte Técnico PC v3.0
+
+🚀 Descripción General
+Script para Soporte Técnico PC v3.0 es una herramienta integral desarrollada por Smith Lozano para el mantenimiento, diagnóstico y reparación de sistemas Windows. Ofrece una interfaz modular que permite realizar diversas operaciones técnicas sin necesidad de conocimientos avanzados.
+
+📁 Estructura del Proyecto
+SoportePC_v3.0/
+├── Ejecutar.ps1              # Punto de entrada principal
+└── Modules/
+    ├── Core.psm1            # Funciones base y menú principal
+    ├── Info.psm1            # Información del sistema
+    ├── Maintenance.psm1     # Limpieza y mantenimiento
+    ├── Repair.psm1          # Reparación del sistema
+    ├── Network.psm1         # Herramientas de red
+    └── Diagnostics.psm1     # Diagnósticos avanzados
+
+🎯 Características Principales
+- ✅ Auto-elevación a administrador cuando es necesario
+- ✅ Interfaz modular organizada por funcionalidades
+- ✅ Log de actividades para seguimiento
+- ✅ Manejo de errores robusto
+- ✅ Compatible con PowerShell 5.1+
+
+---
+
+📊 Menús y Funcionalidades Detalladas
+
+🏠 MENU PRINCIPAL
+
+1. INFORMACION DEL SISTEMA
+Información detallada sobre hardware y software del equipo
+
+- 1) Información general del sistema - Datos básicos del equipo, SO, BIOS
+- 2) Información de hardware detallada - CPU, RAM, discos, GPU
+- 3) Información de red y conectividad - Adaptadores, IP, DNS, conectividad
+- 4) Espacio en disco y almacenamiento - Uso de unidades y porcentajes libres
+- 5) Estado de servicios críticos - Verificación de servicios esenciales
+- 6) Software instalado y updates - Últimas actualizaciones y programas
+
+2. LIMPIEZA Y MANTENIMIENTO
+Herramientas para optimizar y liberar espacio
+
+- 1) Limpiar Temp del sistema - Archivos temporales de Windows
+- 2) Limpiar %temp% del usuario - Temporales del usuario actual
+- 3) Limpiar Prefetch - Archivos de precarga (requiere admin)
+- 4) Limpiar caches básicas - Cachés de explorador, historial
+- 5) Limpiar logs del sistema - Limpia registros de eventos (requiere admin)
+- 6) Limpiar Papelera de Reciclaje - Vacía la papelera
+- 7) Limpiar cache del navegador - Cachés de Chrome, Edge, Firefox
+- 8) Desfragmentar disco - Optimiza unidades (requiere admin)
+- 9) Ejecutar liberador de espacio - Abre cleanmgr.exe
+- 10) Optimización rápida del sistema - Combinación de limpiezas básicas
+
+3. REPARACION DEL SISTEMA
+Herramientas de reparación avanzadas (requieren admin)
+
+- 1) Reparar archivos del sistema (SFC) - SFC /scannow
+- 2) Reparar imagen de Windows (DISM) - DISM /RestoreHealth
+- 3) Reparar Windows Update - Resetea componentes de Windows Update
+- 4) Reparar servicios básicos - Reinicia servicios críticos
+- 5) Resetear cache de red - Limpia configuraciones de red
+- 6) Restaurar configuraciones predeterminadas - Políticas, firewall, energía
+- 7) Reparar discos (CHKDSK) - Programa CHKDSK en próximo reinicio
+- 8) Reparación completa del sistema - Ejecuta todas las reparaciones en secuencia
+
+4. HERRAMIENTAS DE RED
+Diagnóstico y gestión de conectividad de red
+
+- 1) Información detallada de red - Adaptadores, IP, gateway, DNS
+- 2) Reiniciar adaptadores de red - Reinicia todos los adaptadores (admin)
+- 3) Test de conectividad - Pruebas de ping a servidores clave
+- 4) Reparar stack de red - Reseteo completo de red (admin)
+- 5) Ver estadísticas de red - Tráfico y conexiones activas
+- 6) Escanear puertos locales - Verifica puertos comunes abiertos
+- 7) Diagnóstico de DNS - Test de resolución DNS
+- 8) Información de conexiones activas - Procesos y conexiones de red
+- 9) Optimizar configuración de red - Ajustes de rendimiento (admin)
+
+5. DIAGNOSTICOS AVANZADOS
+Análisis profundo del sistema
+
+- 1) Diagnóstico de rendimiento del sistema - CPU, memoria, procesos
+- 2) Verificar eventos críticos - Eventos de error últimas 24h
+- 3) Diagnóstico de salud del disco - Espacio y estado de unidades
+- 4) Test de memoria RAM - Información y diagnóstico de memoria
+- 5) Ver servicios problemáticos - Servicios detenidos que deberían ejecutarse
+- 6) Diagnóstico de arranque - Tiempo de boot y programas de inicio
+- 7) Generar informe HTML del sistema - Reporte completo en formato web
+
+6. VER LOG DE ACTIVIDADES
+Registro de todas las operaciones realizadas
+
+0. SALIR
+Cierra la aplicación de forma segura
+
+---
+
+⚙️ Requisitos del Sistema
+
+- Sistema Operativo: Windows 10/11 (también compatible con Windows 8.1/7)
+- PowerShell: Versión 5.1 o superior
+- Permisos: Ejecutar como administrador para funciones completas
+- Espacio: Mínimo 100 MB libres para operaciones temporales
+
+---
+
+🚀 Instrucciones de Uso
+
+1. Ejecutar como administrador para acceso completo a todas las funciones
+2. Navegar por los menús usando números y Enter
+3. Seguir instrucciones en pantalla para cada operación
+4. Reiniciar el sistema cuando se indique para completar ciertas reparaciones
+5. Consultar el log para ver historial de actividades
+
+---
+
+⚠️ Notas Importantes
+
+- 🔒 Funciones marcadas requieren permisos de administrador
+- 💾 Algunas operaciones pueden tomar varios minutos
+- 🔄 Se recomienda reinicio después de reparaciones importantes
+- 📝 Todas las actividades se registran en el log soporte_pc.log que se genera automáticamente dentro de la carpeta Modules/
+
+---
+
+👨‍💻 Desarrollador
+Smith Lozano - Versión 3.0
+Script para Soporte Técnico para mantenimiento integral de PCs
+= DE USO LIBRE =
+
+---
+¡Gracias por usar el Script para Soporte Técnico PC v3.0! 🛠️💻
