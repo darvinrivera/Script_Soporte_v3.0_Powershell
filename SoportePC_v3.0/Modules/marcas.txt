@@ -1,0 +1,17 @@
+# Formato: CODIGO=Nombre Completo del Fabricante
+ACR=Acer America Corp.
+AOC=AOC International
+DEL=Dell Inc.
+SAM=Samsung
+LGD=LG Display
+HWP=Hewlett-Packard
+LEN=Lenovo
+SNY=Sony
+NEC=NEC Corporation
+VSC=ViewSonic Corporation
+BEN=BenQ Corporation
+ASU=ASUSTeK Computer Inc.
+MSI=Micro-Star International
+GIG=GIGABYTE Technology
+AUS=ASUSTeK Computer Inc. (alternativo)
+UNK=Unknown Manufacturer

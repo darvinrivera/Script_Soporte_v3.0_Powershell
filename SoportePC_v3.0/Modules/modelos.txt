@@ -1,0 +1,5 @@
+# Formato: CODIGO_INTERNO=Nombre Comercial del Modelo
+4099=VG270
+24E2=UltraSharp U2419H
+VX248=VG248QE
+C27FG=Odyssey G5
