@@ -1,71 +1,27 @@
-# ==========================================
-# Info.psm1
-# Modulo: Informacion del sistema
-# ==========================================
-
-function Show-InfoMenu {
-    while ($true) {
-        Show-Title "MENU - INFORMACION DEL SISTEMA"
-
-        Write-Host "1) Informacion general del sistema" -ForegroundColor White
-        Write-Host "2) Informacion de hardware detallada" -ForegroundColor White
-        Write-Host "3) Informacion de red y conectividad" -ForegroundColor White
-        Write-Host "4) Espacio en disco y almacenamiento" -ForegroundColor White
-        Write-Host "5) Estado de servicios criticos" -ForegroundColor White
-        Write-Host "6) Software instalado y updates" -ForegroundColor White
-        Write-Host "0) Volver al menu principal" -ForegroundColor Gray
-        Write-Host ""
-
-        $opc = Get-UserChoice "Ingrese una opcion"
-
-        switch ($opc) {
-            "1" { Get-SystemInfo }
-            "2" { Get-DetailedHardwareInfo }
-            "3" { Get-NetworkConnectivityInfo }
-            "4" { Get-StorageDetailedInfo }
-            "5" { Get-CriticalServicesStatus }
-            "6" { Get-SoftwareUpdatesInfo }
-            "0" { return }
-            default {
-                Write-Host "Opcion invalida." -ForegroundColor Red
-                Start-Sleep -Seconds 1
-            }
-        }
-        Pause
-    }
-}
-
-function Get-SystemInfo {
-    Show-Title "INFORMACION GENERAL DEL SISTEMA"
-    
-    try {
-        Write-Host "=== INFORMACION BASICA ===" -ForegroundColor Yellow
-        $computerInfo = Get-ComputerInfo
-        Write-Host "Nombre del equipo: $($computerInfo.CsName)" -ForegroundColor Cyan
-        Write-Host "Usuario actual: $($computerInfo.CsUserName)" -ForegroundColor Cyan
-        Write-Host "Dominio: $($computerInfo.CsDomain)" -ForegroundColor Cyan
-        Write-Host "Fabricante: $($computerInfo.CsManufacturer)" -ForegroundColor Cyan
-        Write-Host "Modelo: $($computerInfo.CsModel)" -ForegroundColor Cyan
-        
-        Write-Host "`n=== SISTEMA OPERATIVO ===" -ForegroundColor Yellow
-        Write-Host "SO: $($computerInfo.WindowsProductName)" -ForegroundColor Cyan
-        Write-Host "Version: $($computerInfo.WindowsVersion)" -ForegroundColor Cyan
-        Write-Host "Edicion: $($computerInfo.WindowsEditionId)" -ForegroundColor Cyan
-        Write-Host "Arquitectura: $($computerInfo.OsArchitecture)" -ForegroundColor Cyan
-        Write-Host "Tiempo activo: $([math]::Round($computerInfo.OsUptime.TotalHours, 2)) horas" -ForegroundColor Cyan
-        
-        Write-Host "`n=== BIOS ===" -ForegroundColor Yellow
-        Write-Host "Fabricante: $($computerInfo.BiosManufacturer)" -ForegroundColor Cyan
-        Write-Host "Version: $($computerInfo.BiosVersion)" -ForegroundColor Cyan
-        Write-Host "Fecha: $($computerInfo.BiosReleaseDate)" -ForegroundColor Cyan
-        
-    } catch {
-        Write-Host "Error al obtener informacion del sistema: $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-
 function Get-DetailedHardwareInfo {
     Show-Title "INFORMACION DETALLADA DE HARDWARE"
+    
+    # Cargar diccionarios para traducción de monitores
+    $scriptDir = $PSScriptRoot
+    $dicMarca = @{}
+    $dicModelo = @{}
+    
+    if ($scriptDir) {
+        $marcasFile = Join-Path $scriptDir "marcas.txt"
+        $modelosFile = Join-Path $scriptDir "modelos.txt"
+        
+        if (Test-Path $marcasFile) {
+            Get-Content $marcasFile | Where-Object { $_ -match '^([^=]+)=(.*)$' } | ForEach-Object {
+                $dicMarca[$matches[1].Trim()] = $matches[2].Trim()
+            }
+        }
+        
+        if (Test-Path $modelosFile) {
+            Get-Content $modelosFile | Where-Object { $_ -match '^([^=]+)=(.*)$' } | ForEach-Object {
+                $dicModelo[$matches[1].Trim()] = $matches[2].Trim()
+            }
+        }
+    }
 
     try {
         Write-Host "=== PROCESADOR ===" -ForegroundColor Yellow
@@ -74,25 +30,97 @@ function Get-DetailedHardwareInfo {
             Write-Host "Procesador: $($cpu.Name)" -ForegroundColor Cyan
             Write-Host "Nucleos: $($cpu.NumberOfCores) fisicos, $($cpu.NumberOfLogicalProcessors) logicos" -ForegroundColor Cyan
             Write-Host "Velocidad: $($cpu.MaxClockSpeed) MHz" -ForegroundColor Cyan
-            Write-Host "Socket: $($cpu.SocketDesignation)" -ForegroundColor Cyan
+#            Write-Host "Socket: $($cpu.SocketDesignation)" -ForegroundColor Cyan
+            Write-Host "Fabricante: $($cpu.Manufacturer)" -ForegroundColor Cyan
+            
+            # Estrategia mejorada para obtener número de serie
+            $cpuSerial = $cpu.SerialNumber
+            $cpuProcessorId = $cpu.ProcessorId
+            
+            # Filtrar valores genéricos/inválidos comunes
+            $invalidSerials = @(
+                "", "None", "Not Specified", "To Be Filled By O.E.M.", 
+                "OEM_Not_To_Be_Displayed", "00000000", "0000000000000000",
+                "0123456789", "123456789", "xxxxxxxx", "XXXXXXX", "Unknown"
+            )
+            
+            # Verificar si el SerialNumber es válido
+            if ([string]::IsNullOrWhiteSpace($cpuSerial) -or $invalidSerials -contains $cpuSerial) {
+                # Intentar con ProcessorId como alternativa
+                if (-not [string]::IsNullOrWhiteSpace($cpuProcessorId) -and 
+                    $cpuProcessorId -notmatch "^0+$" -and 
+                    $invalidSerials -notcontains $cpuProcessorId) {
+                    $cpuSerial = "ProcessorID: $cpuProcessorId"
+                } else {
+                    # Si todo falla, intentar obtener información de BIOS/Board
+                    $boardSerial = (Get-CimInstance Win32_BaseBoard).SerialNumber
+                    if (-not [string]::IsNullOrWhiteSpace($boardSerial) -and 
+                        $invalidSerials -notcontains $boardSerial) {
+                        $cpuSerial = "BoardSerial: $boardSerial (referencia)"
+                    } else {
+                        $cpuSerial = "No Disponible / OEM"
+                    }
+                }
+            }
+            
+            Write-Host "Identificador Unico: $cpuSerial" -ForegroundColor Cyan
+            
+            # Información adicional útil
+            Write-Host "Familia: $($cpu.Family) - Modelo: $($cpu.Description)" -ForegroundColor Cyan
+            
+            # Información de caché
+            $l2 = if ($cpu.L2CacheSize) { "$($cpu.L2CacheSize) KB" } else { "N/A" }
+            $l3 = if ($cpu.L3CacheSize) { "$($cpu.L3CacheSize) KB" } else { "N/A" }
+            Write-Host "Cache: L2=$l2, L3=$l3" -ForegroundColor Cyan
+            
+            # Estado de virtualización
+#            $virtualizationEnabled = if ($cpu.VirtualizationFirmwareEnabled) { "Sí" } else { "No" }
+#            Write-Host "Virtualizacion Habilitada: $virtualizationEnabled" -ForegroundColor Cyan
+            
             Write-Host ""
         }
 
         Write-Host "=== MEMORIA RAM ===" -ForegroundColor Yellow
         $memory = Get-CimInstance Win32_PhysicalMemory
         $totalMemory = 0
-        foreach ($mem in $memory) {
-            $sizeGB = [math]::Round($mem.Capacity / 1GB, 2)
-            $totalMemory += $sizeGB
-            Write-Host "Modulo: $sizeGB GB - $($mem.Speed) MHz - $($mem.Manufacturer)" -ForegroundColor Cyan
+        $moduloCount = 0
+        
+        if ($memory) {
+            foreach ($mem in $memory) {
+                $moduloCount++
+                $sizeGB = [math]::Round($mem.Capacity / 1GB, 2)
+                $totalMemory += $sizeGB
+                
+                Write-Host "Modulo #$moduloCount" -ForegroundColor Yellow
+                Write-Host "Capacidad: $sizeGB GB" -ForegroundColor Cyan
+                Write-Host "Velocidad: $($mem.Speed) MHz" -ForegroundColor Cyan
+                Write-Host "Fabricante: $($mem.Manufacturer)" -ForegroundColor Cyan
+                Write-Host "Numero de Serie: $($mem.SerialNumber)" -ForegroundColor Cyan
+#                Write-Host "Banco/Slot: $($mem.BankLabel)" -ForegroundColor Cyan
+#                Write-Host "Tipo: $($mem.MemoryType)" -ForegroundColor Cyan
+#                Write-Host "Form Factor: $($mem.FormFactor)" -ForegroundColor Cyan
+                
+                # Información adicional si está disponible
+#                if ($mem.PartNumber) {
+#                    Write-Host "Numero de Parte: $($mem.PartNumber)" -ForegroundColor Cyan
+#                }
+                
+                Write-Host ""
+            }
+            
+            Write-Host "RESUMEN DE MEMORIA RAM" -ForegroundColor Green
+            Write-Host "Total de Modulos: $moduloCount" -ForegroundColor Green
+            Write-Host "Total Capacidad: $totalMemory GB" -ForegroundColor Green
+        } else {
+            Write-Host "No se pudo obtener información de la memoria RAM" -ForegroundColor Red
         }
-        Write-Host "Total RAM: $totalMemory GB" -ForegroundColor Green
 
         Write-Host "`n=== ALMACENAMIENTO ===" -ForegroundColor Yellow
         $disks = Get-CimInstance Win32_DiskDrive
         foreach ($disk in $disks) {
             $sizeGB = [math]::Round($disk.Size / 1GB, 2)
             Write-Host "Disco: $($disk.Model)" -ForegroundColor Cyan
+            Write-Host "Numero de Serie: $($disk.SerialNumber)" -ForegroundColor Cyan
             Write-Host "Tamaño: $sizeGB GB - Interface: $($disk.InterfaceType)" -ForegroundColor Cyan
             Write-Host ""
         }
@@ -103,129 +131,142 @@ function Get-DetailedHardwareInfo {
             if ($gpu.Name -notlike "*Remote*" -and $gpu.Name -notlike "*Mirror*") {
                 $vramMB = if ($gpu.AdapterRAM -gt 0) { [math]::Round($gpu.AdapterRAM / 1MB, 2) } else { "Desconocido" }
                 Write-Host "GPU: $($gpu.Name)" -ForegroundColor Cyan
+                Write-Host "Numero de Serie: $($gpu.SerialNumber)" -ForegroundColor Cyan
                 Write-Host "VRAM: $vramMB MB - Driver: $($gpu.DriverVersion)" -ForegroundColor Cyan
                 Write-Host ""
             }
         }
 
+        # NUEVA SECCIÓN DE MONITORES
+        Write-Host "=== MONITORES ===" -ForegroundColor Yellow
+        try {
+            $monitores = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue
+            
+            if (-not $monitores) {
+                Write-Host "No se detectaron monitores o no hay información disponible." -ForegroundColor Red
+            } else {
+                $indice = 1
+                foreach ($mon in $monitores) {
+                    # Obtener y traducir Marca
+                    $codigoMarca = "N/A"
+                    if ($mon.ManufacturerName -and $mon.ManufacturerName.Count -ge 3) {
+                        $codigoMarca = ($mon.ManufacturerName[0..2] | ForEach-Object { 
+                            if ($_ -gt 0) { [char]$_ } else { '' }
+                        }) -join ''
+                    }
+                    $marcaFinal = if ($dicMarca.ContainsKey($codigoMarca)) { 
+                        $dicMarca[$codigoMarca] 
+                    } else { 
+                        $codigoMarca 
+                    }
+
+                    # Obtener Modelo
+                    $modeloCodigo = "No Reportado"
+                    if ($mon.UserFriendlyName -and $mon.UserFriendlyName.Count -gt 0) {
+                        $modeloCodigo = ($mon.UserFriendlyName | ForEach-Object { 
+                            if ($_ -gt 0) { [char]$_ } else { '' }
+                        }) -join ''
+                    }
+                    $modeloFinal = if ($dicModelo.ContainsKey($modeloCodigo)) { 
+                        $dicModelo[$modeloCodigo] 
+                    } else { 
+                        $modeloCodigo 
+                    }
+
+                    # Obtener Número de Serie
+                    $serial = "No Reportado"
+                    if ($mon.SerialNumberID -and $mon.SerialNumberID.Count -gt 0) {
+                        $serial = ($mon.SerialNumberID | ForEach-Object { 
+                            if ($_ -gt 0) { [char]$_ } else { '' }
+                        }) -join ''
+                    }
+
+                    # Obtener Código de Producto
+                    $producto = "N/A"
+                    if ($mon.ProductCodeID -and $mon.ProductCodeID.Count -gt 0) {
+                        $producto = ($mon.ProductCodeID | ForEach-Object { 
+                            if ($_ -gt 0) { [char]$_ } else { '' }
+                        }) -join ''
+                    }
+
+                    Write-Host "Monitor #$indice" -ForegroundColor Cyan
+#                    Write-Host "Activo: $(if ($mon.Active) { 'Si' } else { 'No' })" -ForegroundColor Cyan
+                    Write-Host "Marca: $marcaFinal" -ForegroundColor Cyan
+                    Write-Host "Modelo: $modeloFinal" -ForegroundColor Cyan
+                    Write-Host "Numero de Serie: $serial" -ForegroundColor Cyan
+#                    Write-Host "Codigo de Producto: $producto" -ForegroundColor Cyan
+#                    Write-Host "Fecha de Fabricacion: $(if ($mon.YearOfManufacture) { $mon.YearOfManufacture } else { 'N/A' })" -ForegroundColor Cyan
+                    Write-Host ""
+                    
+                    $indice++
+                }
+            }
+        } catch {
+            Write-Host "Error al obtener informacion de monitores: $($_.Exception.Message)" -ForegroundColor Red
+        }
+
+        # NUEVA SECCIÓN: PLACA BASE
+        Write-Host "=== PLACA BASE ===" -ForegroundColor Yellow
+        try {
+            $boards = Get-CimInstance Win32_BaseBoard
+            
+            foreach ($board in $boards) {
+                # Filtrar valores genéricos comunes en placas base
+                $invalidValues = @(
+                    "To Be Filled By O.E.M.", "OEM_Not_To_Be_Displayed",
+                    "Default string", "Not Available", "Not Specified",
+                    "123456789", "00000000", "xxxxxxxx", "XXXXXXX"
+                )
+                
+                # Obtener fabricante
+                $fabricante = $board.Manufacturer
+                if ($invalidValues -contains $fabricante -or [string]::IsNullOrWhiteSpace($fabricante)) {
+                    $fabricante = "No Disponible / OEM"
+                }
+                
+                # Obtener modelo/producto
+                $modelo = $board.Product
+                if ($invalidValues -contains $modelo -or [string]::IsNullOrWhiteSpace($modelo)) {
+                    $modelo = "No Disponible"
+                }
+                
+                # Obtener número de serie
+                $serialNumber = $board.SerialNumber
+                if ($invalidValues -contains $serialNumber -or [string]::IsNullOrWhiteSpace($serialNumber)) {
+                    $serialNumber = "No Disponible"
+                }
+                
+                # Obtener versión
+                $version = $board.Version
+                if ($invalidValues -contains $version -or [string]::IsNullOrWhiteSpace($version)) {
+                    $version = "N/A"
+                }
+                
+                Write-Host "Fabricante: $fabricante" -ForegroundColor Cyan
+                Write-Host "Modelo: $modelo" -ForegroundColor Cyan
+                Write-Host "Numero de Serie: $serialNumber" -ForegroundColor Cyan
+                Write-Host "Version: $version" -ForegroundColor Cyan
+                
+                # Información adicional sobre slots
+#                $slots = Get-CimInstance Win32_SystemEnclosure
+#                if ($slots) {
+#                    Write-Host "Tipo de Chasis: $($slots.ChassisTypes[0])" -ForegroundColor Cyan
+#                }
+                
+                # Información de BIOS
+#                $bios = Get-CimInstance Win32_BIOS
+#                if ($bios) {
+#                    Write-Host "BIOS: $($bios.Manufacturer) - Versión: $($bios.SMBIOSBIOSVersion)" -ForegroundColor Cyan
+#                    Write-Host "Serial BIOS: $($bios.SerialNumber)" -ForegroundColor Cyan
+#                }
+                
+                Write-Host ""
+            }
+        } catch {
+            Write-Host "Error al obtener informacion de la placa base: $($_.Exception.Message)" -ForegroundColor Red
+        }
+	
     } catch {
         Write-Host "Error al obtener informacion de hardware: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
-
-function Get-NetworkConnectivityInfo {
-    Show-Title "INFORMACION DE RED Y CONECTIVIDAD"
-
-    try {
-        Write-Host "=== ADAPTADORES DE RED ===" -ForegroundColor Yellow
-        $adapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" }
-        foreach ($adapter in $adapters) {
-            Write-Host "Adaptador: $($adapter.Name)" -ForegroundColor Cyan
-            Write-Host "Estado: $($adapter.Status) - Velocidad: $($adapter.LinkSpeed)" -ForegroundColor Cyan
-            Write-Host "MAC: $($adapter.MacAddress)" -ForegroundColor Cyan
-            
-            $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue
-            if ($ipConfig) {
-                Write-Host "IP: $($ipConfig.IPAddress)" -ForegroundColor Cyan
-            }
-            Write-Host ""
-        }
-
-        Write-Host "=== CONECTIVIDAD INTERNET ===" -ForegroundColor Yellow
-        Write-Host "Probando conectividad a internet..." -ForegroundColor Gray
-        $pingResult = Test-Connection 8.8.8.8 -Count 2 -Quiet
-        if ($pingResult) {
-            Write-Host "Conectividad internet: OK" -ForegroundColor Green
-        } else {
-            Write-Host "Conectividad internet: FALLIDO" -ForegroundColor Red
-        }
-
-        Write-Host "`n=== DNS CONFIGURADO ===" -ForegroundColor Yellow
-        Get-DnsClientServerAddress | Where-Object { $_.ServerAddresses } | 
-            Select-Object InterfaceAlias, ServerAddresses | Format-Table -AutoSize
-
-    } catch {
-        Write-Host "Error al obtener informacion de red: $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-
-function Get-StorageDetailedInfo {
-    Show-Title "INFORMACION DETALLADA DE ALMACENAMIENTO"
-
-    try {
-        $drives = Get-PSDrive -PSProvider FileSystem
-        Write-Host "=== UNIDADES DE ALMACENAMIENTO ===" -ForegroundColor Yellow
-        
-        foreach ($drive in $drives) {
-            $freeGB = [math]::Round($drive.Free / 1GB, 2)
-            $usedGB = [math]::Round($drive.Used / 1GB, 2)
-            $totalGB = $freeGB + $usedGB
-            $freePercent = [math]::Round(($freeGB / $totalGB) * 100, 2)
-            
-            $color = if ($freePercent -lt 10) { "Red" } elseif ($freePercent -lt 20) { "Yellow" } else { "Green" }
-            
-            Write-Host "Unidad $($drive.Name):" -ForegroundColor Cyan
-            Write-Host "  Total: $totalGB GB" -ForegroundColor White
-            Write-Host "  Usado: $usedGB GB" -ForegroundColor White
-            Write-Host "  Libre: $freeGB GB ($freePercent porciento)" -ForegroundColor $color
-            Write-Host "  Root: $($drive.Root)" -ForegroundColor Gray
-            Write-Host ""
-        }
-
-    } catch {
-        Write-Host "Error al obtener informacion de almacenamiento: $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-
-function Get-CriticalServicesStatus {
-    Show-Title "ESTADO DE SERVICIOS CRITICOS"
-
-    $criticalServices = @(
-        @{Name="Winmgmt"; DisplayName="Windows Management Instrumentation"},
-        @{Name="EventLog"; DisplayName="Windows Event Log"},
-        @{Name="CryptSvc"; DisplayName="Cryptographic Services"},
-        @{Name="DcomLaunch"; DisplayName="DCOM Server Process Launcher"},
-        @{Name="RpcSs"; DisplayName="Remote Procedure Call"},
-        @{Name="LanmanWorkstation"; DisplayName="Client for Networks"},
-        @{Name="LanmanServer"; DisplayName="Server Service"},
-        @{Name="Themes"; DisplayName="Themes"},
-        @{Name="AudioSrv"; DisplayName="Windows Audio"}
-    )
-
-    Write-Host "=== SERVICIOS ESENCIALES ===" -ForegroundColor Yellow
-    
-    foreach ($service in $criticalServices) {
-        $svc = Get-Service -Name $service.Name -ErrorAction SilentlyContinue
-        if ($svc) {
-            $statusColor = if ($svc.Status -eq "Running") { "Green" } else { "Red" }
-            $startTypeColor = if ($svc.StartType -eq "Automatic") { "Cyan" } else { "Yellow" }
-            
-            Write-Host "OK $($service.DisplayName)" -ForegroundColor White
-            Write-Host "  Estado: $($svc.Status)" -ForegroundColor $statusColor
-            Write-Host "  Inicio: $($svc.StartType)" -ForegroundColor $startTypeColor
-            Write-Host ""
-        }
-    }
-}
-
-function Get-SoftwareUpdatesInfo {
-    Show-Title "SOFTWARE INSTALADO Y UPDATES"
-
-    try {
-        Write-Host "=== ULTIMOS UPDATES INSTALADOS ===" -ForegroundColor Yellow
-        $updates = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 10
-        $updates | Format-Table HotFixID, Description, InstalledOn, InstalledBy -AutoSize
-
-        Write-Host "`n=== SOFTWARE INSTALADO (Aplicaciones principales) ===" -ForegroundColor Yellow
-        $software = Get-CimInstance Win32_Product | 
-                    Select-Object -First 15 Name, Version, Vendor, InstallDate |
-                    Sort-Object Name
-        
-        $software | Format-Table -AutoSize
-
-    } catch {
-        Write-Host "Error al obtener informacion de software: $($_.Exception.Message)" -ForegroundColor Red
-    }
-}
-
-Export-ModuleMember -Function Show-InfoMenu, Get-*
